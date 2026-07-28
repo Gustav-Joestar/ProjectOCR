@@ -5,9 +5,10 @@ from src.detectors.drawing_detector import DrawingDetector
 
 IMAGES_DIR = Path("data/images")
 OUTPUT_DIR = Path("output/detection")
+DRAWINGS_DIR = Path("output/drawing")
 
 FIRST_PAGE = 1
-LAST_PAGE = 47
+LAST_PAGE = 44
 
 
 def analyze_page(page_number: int):
@@ -27,6 +28,7 @@ def analyze_page(page_number: int):
     drawings = detector.find_drawings()
 
     detector.save_detection_preview(str(output_path))
+    detector.save_drawings(str(DRAWINGS_DIR))
 
     return drawings, output_path
 

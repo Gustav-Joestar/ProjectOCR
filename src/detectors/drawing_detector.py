@@ -644,3 +644,41 @@ class DrawingDetector:
             raise RuntimeError(
                 f"Не удалось сохранить: {output_path}"
             )
+
+    def save_drawings(self, output_dir: str):
+        if self.image is None:
+            raise RuntimeError(
+                "Исходное изображение отсутствует."
+            )
+
+        output_dir = Path(output_dir)
+
+        output_dir.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        saved_paths = []
+
+        for index, (x, y, w, h) in enumerate(
+            self.drawings,
+            start=1
+        ):
+            drawing = self.image[
+                y:y + h,
+                x:x + w
+            ]
+
+            output_path = (
+                output_dir
+                / f"{self.image_path.stem}_drawing_{index:02d}.png"
+            )
+
+            if not cv2.imwrite(str(output_path), drawing):
+                raise RuntimeError(
+                    f"Не удалось сохранить: {output_path}"
+                )
+
+            saved_paths.append(output_path)
+
+        return saved_paths
