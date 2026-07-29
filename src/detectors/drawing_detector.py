@@ -682,3 +682,54 @@ class DrawingDetector:
             saved_paths.append(output_path)
 
         return saved_paths
+
+    def save_drawings(
+        self,
+        output_dir: str | Path,
+        page_number: int
+    ) -> list[Path]:
+        """
+        Вырезает найденные чертежи из исходного изображения
+        и сохраняет каждый чертёж отдельным PNG-файлом.
+        """
+        if self.image is None:
+            raise RuntimeError(
+                "Исходное изображение отсутствует."
+            )
+
+        output_dir = Path(output_dir)
+        output_dir.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        saved_drawings = []
+
+        for drawing_number, (x, y, w, h) in enumerate(
+            self.drawings,
+            start=1
+        ):
+            crop = self.image[
+                y:y + h,
+                x:x + w
+            ]
+
+            if crop.size == 0:
+                continue
+
+            output_path = (
+                output_dir
+                / (
+                    f"page_{page_number:03d}"
+                    f"_drawing_{drawing_number:03d}.png"
+                )
+            )
+
+            if not cv2.imwrite(str(output_path), crop):
+                raise RuntimeError(
+                    f"Не удалось сохранить чертёж: {output_path}"
+                )
+
+            saved_drawings.append(output_path)
+
+        return saved_drawings

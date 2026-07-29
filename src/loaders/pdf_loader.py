@@ -1,67 +1,105 @@
-import fitz
 from pathlib import Path
+
+import fitz
 
 
 class PDFLoader:
-
-    def __init__(self, pdf_path: str):
+    def __init__(self, pdf_path: str | Path):
         self.pdf_path = Path(pdf_path)
         self.document = None
 
-    def open(self):
-
-        if not self.pdf_path.exists():
-            raise FileNotFoundError(
-                f"Файл не найден: {self.pdf_path}"
-            )
-
-        self.document = fitz.open(self.pdf_path)
-
-        print("PDF успешно открыт.")
-        print(f"Количество страниц: {self.page_count}")
+    @property
+    def name(self) -> str:
+        return self.pdf_path.stem
 
     @property
-    def page_count(self):
-
-        if self.document is None:
-            return 0
-
-        return len(self.document)
-    
-    def save_page(self, page_number: int, dpi: int = 300) -> str:
-
+    def page_count(self) -> int:
         if self.document is None:
             raise RuntimeError("PDF не открыт.")
 
-        if page_number < 0 or page_number >= self.page_count:
-            raise ValueError("Некорректный номер страницы.")
+        return len(self.document)
+
+    def open(self):
+        if not self.pdf_path.exists():
+            raise FileNotFoundError(
+                f"PDF-файл не найден: {self.pdf_path}"
+            )
+
+        if not self.pdf_path.is_file():
+            raise FileNotFoundError(
+                f"Указанный путь не является файлом: {self.pdf_path}"
+            )
+
+        if self.pdf_path.suffix.lower() != ".pdf":
+            raise ValueError(
+                f"Файл не является PDF: {self.pdf_path}"
+            )
+
+        if self.document is not None:
+            self.close()
+
+        try:
+            self.document = fitz.open(str(self.pdf_path))
+        except Exception as error:
+            raise RuntimeError(
+                f"Не удалось открыть PDF: {self.pdf_path}"
+            ) from error
+
+    def save_page(
+        self,
+        page_number: int,
+        output_dir: str | Path,
+        dpi: int = 600
+    ) -> Path:
+        if self.document is None:
+            raise RuntimeError("PDF не открыт.")
+
+        if not 0 <= page_number < self.page_count:
+            raise IndexError(
+                f"Страница {page_number + 1} отсутствует. "
+                f"Всего страниц: {self.page_count}"
+            )
+
+        if dpi <= 0:
+            raise ValueError(
+                f"DPI должен быть больше нуля: {dpi}"
+            )
+
+        output_dir = Path(output_dir)
+        output_dir.mkdir(
+            parents=True,
+            exist_ok=True
+        )
 
         page = self.document.load_page(page_number)
 
-        pix = page.get_pixmap(dpi=dpi)
+        pixmap = page.get_pixmap(
+            dpi=dpi,
+            alpha=False
+        )
 
-        output_dir = Path("data/images")
-        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = (
+            output_dir
+            / f"page_{page_number + 1:03d}.png"
+        )
 
-        output_path = output_dir / f"page_{page_number + 1:03}.png"
+        try:
+            pixmap.save(str(output_path))
+        except Exception as error:
+            raise RuntimeError(
+                f"Не удалось сохранить страницу: {output_path}"
+            ) from error
 
-        pix.save(output_path)
+        return output_path
 
-        print(f"Страница сохранена: {output_path}")
+    def close(self):
+        if self.document is not None:
+            self.document.close()
+            self.document = None
 
-        return str(output_path)
-    
-    def save_all_pages(self, dpi: int = 600) -> list[str]:
+    def __enter__(self):
+        self.open()
+        return self
 
-        if self.document is None:
-            raise RuntimeError("PDF не открыт.")
-
-        saved_pages = []
-
-        for page_number in range(self.page_count):
-            image_path = self.save_page(page_number, dpi)
-            saved_pages.append(image_path)
-
-        print(f"\nСохранено страниц: {len(saved_pages)}")
-
-        return saved_pages
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
