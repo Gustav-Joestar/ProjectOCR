@@ -419,6 +419,59 @@ class StampSegmenter:
             )
         )
 
+    def extract_cells(self, padding=3):
+        """
+        Вырезает найденные ячейки из исходного изображения.
+
+        Возвращает список словарей:
+        {
+            "index": номер ячейки,
+            "bbox": (x1, y1, x2, y2),
+            "image": изображение ячейки
+        }
+        """
+
+        if self.image is None:
+            raise RuntimeError(
+                "Сначала необходимо вызвать load()."
+            )
+
+        cells = self.find_cells()
+
+        height, width = self.image.shape[:2]
+
+        result = []
+
+        for index, (x1, y1, x2, y2) in enumerate(
+            cells,
+            start=1
+        ):
+            # Чуть отступаем внутрь от линий сетки.
+            crop_x1 = min(width, x1 + padding)
+            crop_y1 = min(height, y1 + padding)
+
+            crop_x2 = max(0, x2 - padding)
+            crop_y2 = max(0, y2 - padding)
+
+            if (
+                crop_x2 <= crop_x1
+                or crop_y2 <= crop_y1
+            ):
+                continue
+
+            crop = self.image[
+                crop_y1:crop_y2,
+                crop_x1:crop_x2
+            ].copy()
+
+            result.append({
+                "index": index,
+                "bbox": (x1, y1, x2, y2),
+                "image": crop,
+            })
+
+        return result
+
     def save_debug(self, output_dir):
         """Сохраняет маски этапов обработки."""
 

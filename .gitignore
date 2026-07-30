@@ -1,0 +1,18 @@
+# Virtual environment
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Generated results
+output/
+
+# IDE
+.vscode/
+.idea/
+
+# Caches
+.pytest_cache/
+.cache/

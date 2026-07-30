@@ -1,0 +1,35 @@
+wrong,correct,type,enabled
+Луст,Лист,exact,1
+Луcт,Лист,exact,1
+Лucт,Лист,exact,1
+Лucm,Лист,exact,1
+Масштад,Масштаб,exact,1
+Macca,Масса,exact,1
+Разрад.,Разраб.,exact,1
+Yтв.,Утв.,exact,1
+№° докум.,№ докум.,exact,1
+FОСТ,ГОСТ,substring,1
+FОCТ,ГОСТ,substring,1
+F0СТ,ГОСТ,substring,1
+F0CТ,ГОСТ,substring,1
+Г0СТ,ГОСТ,substring,1
+Г0CТ,ГОСТ,substring,1
+ГOСТ,ГОСТ,substring,1
+ГOCТ,ГОСТ,substring,1
+Лут.,Лит.,exact,1
+H. контр,Н. контр.,exact,1
+Т. контр,Т. контр.,exact,1
+Изм,Изм.,exact,1
+Листов1,Листов 1,exact,1
+FОCT,ГОСТ,substring,1
+Шайда,Шайба,exact,1
+Дусk,Диск,exact,1
+BиHт,Винт,exact,1
+Оnора,Опора,exact,1
+Cm 5,Ст5,substring,1
+12X2Н4А,12Х2Н4А,substring,1
+45X,45Х,substring,1
+Изм. c,Изм.,exact,1
+И3м,Изм.,exact,1
+c Разрад.,Разраб.,exact,1
+B438-17 ГОСТ 7293-85,ВЧ38-17 ГОСТ 7293-85,exact,1
