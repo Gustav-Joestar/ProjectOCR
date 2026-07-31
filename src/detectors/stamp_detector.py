@@ -305,24 +305,253 @@ class StampDetector:
 
         return stable_x
 
-    def find_stamp_bounds(self):
-        """Возвращает границы штампа: (x_left, y_top, x_right, y_bottom)."""
+    def find_stamp_bounds_fallback(self):
+        """
+        Резервный поиск основной надписи.
 
+        Используется только после неудачи основного алгоритма.
+
+        Ищет регулярную табличную сетку в нижней части изображения,
+        даже если стандартный group_table_rows() разделил её строки
+        на отдельные группы.
+        """
+
+        rows = self.find_intersection_rows()
+
+        if not rows:
+            return None
+
+        height, width = self.binary.shape
+
+        # Оставляем только нижнюю часть изображения.
+        lower_rows = [
+            row
+            for row in rows
+            if row[0] >= height * 0.70
+        ]
+
+        if len(lower_rows) < 3:
+            return None
+
+        # find_intersection_rows() может содержать несколько соседних
+        # пиксельных строк одной и той же физической горизонтали.
+        #
+        # Объединяем такие строки в одну.
+        merged_rows = []
+
+        cluster = [lower_rows[0]]
+
+        for row in lower_rows[1:]:
+            previous_y = cluster[-1][0]
+            current_y = row[0]
+
+            if current_y - previous_y <= 3:
+                cluster.append(row)
+
+            else:
+                merged_rows.append(
+                    self._merge_fallback_row_cluster(cluster)
+                )
+
+                cluster = [row]
+
+        merged_rows.append(
+            self._merge_fallback_row_cluster(cluster)
+        )
+
+        if len(merged_rows) < 3:
+            return None
+
+        # ---------------------------------------------------------
+        # Ищем последовательность горизонталей с регулярным шагом.
+        # ---------------------------------------------------------
+
+        best_sequence = []
+
+        for start in range(len(merged_rows) - 2):
+
+            sequence = [
+                merged_rows[start]
+            ]
+
+            previous_gap = None
+
+            for index in range(
+                start + 1,
+                len(merged_rows),
+            ):
+                previous_y = sequence[-1][0]
+                current_y = merged_rows[index][0]
+
+                gap = current_y - previous_y
+
+                # Слишком маленький промежуток —
+                # вероятно, это часть той же структуры линии.
+                if gap < 10:
+                    continue
+
+                if previous_gap is None:
+                    sequence.append(
+                        merged_rows[index]
+                    )
+
+                    previous_gap = gap
+                    continue
+
+                # Допускаем небольшое изменение расстояния
+                # между соседними строками таблицы.
+                tolerance = max(
+                    8,
+                    int(previous_gap * 0.25),
+                )
+
+                if abs(gap - previous_gap) <= tolerance:
+                    sequence.append(
+                        merged_rows[index]
+                    )
+
+                    # Не фиксируем шаг навсегда:
+                    # плавно уточняем его.
+                    previous_gap = (
+                        previous_gap + gap
+                    ) / 2
+
+                elif gap > previous_gap + tolerance:
+                    break
+
+            if len(sequence) > len(best_sequence):
+                best_sequence = sequence
+
+        # Для штампа ожидаем хотя бы несколько горизонталей.
+        if len(best_sequence) < 4:
+            return None
+
+        # ---------------------------------------------------------
+        # Определяем X по повторяющимся вертикалям.
+        # ---------------------------------------------------------
+
+        x_values = []
+
+        for _, x_positions in best_sequence:
+            x_values.extend(x_positions)
+
+        if not x_values:
+            return None
+
+        x_values.sort()
+
+        # Кластеризуем близкие X.
+        x_clusters = []
+
+        for x in x_values:
+            if not x_clusters:
+                x_clusters.append([x])
+                continue
+
+            cluster_center = sum(
+                x_clusters[-1]
+            ) / len(x_clusters[-1])
+
+            if abs(x - cluster_center) <= 8:
+                x_clusters[-1].append(x)
+            else:
+                x_clusters.append([x])
+
+        # Вертикаль должна встречаться
+        # хотя бы на нескольких строках.
+        min_occurrences = max(
+            3,
+            len(best_sequence) // 3,
+        )
+
+        stable_x = []
+
+        for cluster in x_clusters:
+            if len(cluster) >= min_occurrences:
+                stable_x.append(
+                    int(
+                        round(
+                            sum(cluster)
+                            / len(cluster)
+                        )
+                    )
+                )
+
+        if len(stable_x) < 2:
+            return None
+
+        x_left = min(stable_x)
+        x_right = max(stable_x)
+
+        y_top = best_sequence[0][0]
+        y_bottom = best_sequence[-1][0]
+
+        if x_right <= x_left:
+            return None
+
+        if y_bottom <= y_top:
+            return None
+
+        return (
+            x_left,
+            y_top,
+            x_right,
+            y_bottom,
+        )
+
+    def _merge_fallback_row_cluster(self, cluster):
+        """
+        Объединяет несколько соседних пиксельных строк
+        одной физической горизонтальной линии.
+        """
+
+        y = int(
+            round(
+                sum(row[0] for row in cluster)
+                / len(cluster)
+            )
+        )
+
+        all_x = []
+
+        for _, x_positions in cluster:
+            all_x.extend(x_positions)
+
+        all_x.sort()
+
+        merged_x = []
+
+        for x in all_x:
+            if (
+                not merged_x
+                or x - merged_x[-1] > 3
+            ):
+                merged_x.append(x)
+
+        return y, merged_x
+
+    def find_stamp_bounds(self):
         stamp_group = self.find_stamp_group()
 
-        if not stamp_group:
-            return None
+        if stamp_group is not None:
+            x_bounds = self.find_stamp_x_bounds(stamp_group)
 
-        x_bounds = self.find_stamp_x_bounds(stamp_group)
+            if x_bounds is not None:
+                x_left, x_right = x_bounds
 
-        if x_bounds is None:
-            return None
+                y_top = stamp_group[0][0]
+                y_bottom = stamp_group[-1][0]
 
-        x_left, x_right = x_bounds
-        y_top = stamp_group[0][0]
-        y_bottom = stamp_group[-1][0]
+                return (
+                    x_left,
+                    y_top,
+                    x_right,
+                    y_bottom,
+                )
 
-        return x_left, y_top, x_right, y_bottom
+        # Основной алгоритм не справился.
+        # Только теперь запускаем fallback.
+        return self.find_stamp_bounds_fallback()
 
     def find_stamp_x_bounds(self, stamp_group):
         """Определяет левую и правую границы штампа."""

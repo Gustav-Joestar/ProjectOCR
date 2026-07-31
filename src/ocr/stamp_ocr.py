@@ -1,12 +1,63 @@
 from pathlib import Path
-
+import os
+import sys
+import logging
+from contextlib import contextmanager
 import cv2
 from paddleocr import PaddleOCR
+
+# Убираем служебный INFO-вывод Paddle/PaddleX:
+# "Creating model..."
+# "Model files already exist..."
+for logger_name in (
+    "paddlex",
+    "paddleocr",
+):
+    logging.getLogger(logger_name).setLevel(logging.WARNING)
+
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message=r"No ccache found.*",
+    category=UserWarning,
+)
 
 from src.segmentation.text_line_segmenter import segment_text_lines
 from src.segmentation.cell_filter import analyze_cell
 from src.ocr.correction_dictionary import OCRCorrectionDictionary
 
+@contextmanager
+def suppress_paddle_output():
+    """
+    Временно подавляет stdout/stderr на уровне файловых дескрипторов.
+
+    В отличие от redirect_stdout/redirect_stderr, глушит также вывод
+    библиотек, который идёт ниже Python sys.stdout/sys.stderr.
+    """
+
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+    stdout_fd = os.dup(1)
+    stderr_fd = os.dup(2)
+
+    try:
+        with open(os.devnull, "w") as devnull:
+            os.dup2(devnull.fileno(), 1)
+            os.dup2(devnull.fileno(), 2)
+
+            yield
+
+    finally:
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+        os.dup2(stdout_fd, 1)
+        os.dup2(stderr_fd, 2)
+
+        os.close(stdout_fd)
+        os.close(stderr_fd)
 
 class StampOCR:
     def __init__(self, image, cells):
@@ -35,7 +86,10 @@ class StampOCR:
             crops.append({
                 "index": index,
                 "bounds": (x1, y1, x2, y2),
-                "image": self.image[top:bottom, left:right]
+                "image": self.image[
+                    top:bottom,
+                    left:right
+                ]
             })
 
         return crops
@@ -177,7 +231,9 @@ class StampOCR:
         for cell in crops:
             image = cell["image"]
 
-            analysis = analyze_cell(image)
+            analysis = analyze_cell(
+                image
+            )
 
             if analysis["is_empty"]:
                 continue
@@ -216,7 +272,10 @@ class StampOCR:
     def save_debug(self, output_dir):
         """Сохраняет вырезанные и подготовленные ячейки."""
 
-        output_dir = Path(output_dir)
+        output_dir = Path(
+            output_dir
+        )
+
         output_dir.mkdir(
             parents=True,
             exist_ok=True
@@ -228,12 +287,14 @@ class StampOCR:
             index = cell["index"]
             image = cell["image"]
 
-            prepared = self.preprocess_crop(image)
+            prepared = self.preprocess_crop(
+                image
+            )
 
             cv2.imwrite(
                 str(
-                    output_dir /
-                    f"cell_{index:03}.png"
+                    output_dir
+                    / f"cell_{index:03}.png"
                 ),
                 prepared
             )
