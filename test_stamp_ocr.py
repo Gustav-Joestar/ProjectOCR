@@ -14,8 +14,12 @@ OUTPUT_DIR = Path(
 
 
 def main():
-    print("\n🔤 Тест подготовки штампа к OCR")
+    print("\n🔤 Тест OCR штампа")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+    # ---------------------------------------------------------
+    # Сегментация штампа
+    # ---------------------------------------------------------
 
     segmenter = StampSegmenter(IMAGE_PATH)
 
@@ -27,17 +31,58 @@ def main():
 
     print(f"▦ Найдено ячеек: {len(cells)}")
 
+    # ---------------------------------------------------------
+    # OCR
+    # ---------------------------------------------------------
+
     ocr = StampOCR(
         segmenter.image,
-        cells
+        cells,
     )
 
+    # Сохраняем debug-изображения всех ячеек.
     crops = ocr.save_debug(
         OUTPUT_DIR
     )
 
+    print("\n🔎 Распознавание текста")
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+    try:
+        results = ocr.recognize()
+
+        for result in results:
+            text = result["text"]
+            raw_text = result["raw_text"]
+            confidence = result["confidence"]
+
+            if not text:
+                continue
+
+            if raw_text != text:
+                print(
+                    f"#{result['index']:03} "
+                    f"{raw_text!r} -> {text!r} | "
+                    f"{confidence:.3f}"
+                )
+            else:
+                print(
+                    f"#{result['index']:03} "
+                    f"{text!r} | "
+                    f"{confidence:.3f}"
+                )
+
+    finally:
+        ocr.close()
+
+    # ---------------------------------------------------------
+    # Итог
+    # ---------------------------------------------------------
+
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     print(f"✂️ Подготовлено ячеек: {len(crops)}")
-    print(f"📁 Результаты: {OUTPUT_DIR}")
+    print(f"🔤 Распознано непустых ячеек: {len(results)}")
+    print(f"📁 Debug: {OUTPUT_DIR}")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 
