@@ -1,4 +1,4 @@
-wrong,correct,type,enabled
+﻿wrong,correct,type,enabled
 Луст,Лист,exact,1
 Луcт,Лист,exact,1
 Лucт,Лист,exact,1
@@ -34,3 +34,7 @@ Cm 5,Ст5,substring,1
 И3м,Изм.,exact,1
 c Разрад.,Разраб.,exact,1
 B438-17 ГОСТ 7293-85,ВЧ38-17 ГОСТ 7293-85,exact,1
+Дроссельо,Дроссель,exact,1
+Втулкаo,Втулка,exact,1
+—Противовес,Противовес,exact,1
+—Золотник,Золотник,exact,1

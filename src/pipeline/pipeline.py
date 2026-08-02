@@ -587,6 +587,11 @@ def process_pdf(
         f"{format_time(elapsed)}"
     )
 
+    print(
+        "────────────────────────────────────────────────────────────"
+    )
+    print()
+
     return (
         len(page_paths),
         len(drawing_paths),
