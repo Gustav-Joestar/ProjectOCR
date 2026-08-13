@@ -8,9 +8,6 @@ output/
 *.jpg
 *.jpeg
 
-
-models/*.pt
-
 *.zip
 
 .idea/
